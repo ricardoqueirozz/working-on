@@ -45,10 +45,12 @@ int
 main (int argc, char *argv[])
 {
   uint16_t numNodePairs = 1;
-  Time simTime = MilliSeconds (1100);
-  double distance = 1000.0;
+  Time simTime = Seconds (10);
+  double radius = 10.0;
+  double distance = 20;
   Time interPacketInterval = MilliSeconds (100);
-  bool useCa = false;
+  bool useShadowing = false;
+  bool useFading = false;
   bool disableDl = false;
   bool disableUl = true;
   bool disablePl = true;
@@ -59,7 +61,8 @@ main (int argc, char *argv[])
   cmd.AddValue ("simTime", "Total duration of the simulation", simTime);
   cmd.AddValue ("distance", "Distance between eNBs [m]", distance);
   cmd.AddValue ("interPacketInterval", "Inter packet interval", interPacketInterval);
-  cmd.AddValue ("useCa", "Whether to use carrier aggregation.", useCa);
+  cmd.AddValue ("useShadowing", "Disable the shadowing parameter of the propagation loss model", useShadowing);
+  cmd.AddValue ("useFading", "Disable the shadowing parameter of the propagation loss model", useFading);
   cmd.AddValue ("disableDl", "Disable downlink data flows", disableDl);
   cmd.AddValue ("disableUl", "Disable uplink data flows", disableUl);
   cmd.AddValue ("disablePl", "Disable data flows between peer UEs", disablePl);
@@ -71,44 +74,42 @@ main (int argc, char *argv[])
   // parse again so you can override default values from the command line
   cmd.Parse(argc, argv);
 
-  if (useCa)
-   {
-     Config::SetDefault ("ns3::LteHelper::UseCa", BooleanValue (useCa));
-     Config::SetDefault ("ns3::LteHelper::NumberOfComponentCarriers", UintegerValue (2));
-     Config::SetDefault ("ns3::LteHelper::EnbComponentCarrierManager", StringValue ("ns3::RrComponentCarrierManager"));
-   }
-
   Ptr<LteHelper> lteHelper = CreateObject<LteHelper> ();
   //add fading
-//  lteHelper->SetAttribute ("FadingModel", StringValue ("ns3::TraceFadingLossModel"));
-//
-//  std::ifstream ifTraceFile;
-//  ifTraceFile.open ("../../src/lte/model/fading-traces/fading_trace_ETU_3kmph.fad", std::ifstream::in);
-//  if (ifTraceFile.good ())
-//    {
-//      // script launched by test.py
-//      lteHelper->SetFadingModelAttribute ("TraceFilename", StringValue ("../../src/lte/model/fading-traces/fading_trace_ETU_3kmph.fad"));
-//    }
-//  else
-//    {
-//      // script launched as an example
-//      lteHelper->SetFadingModelAttribute ("TraceFilename", StringValue ("src/lte/model/fading-traces/fading_trace_ETU_3kmph.fad"));
-//    }
-//
-//  // these parameters have to be set only in case of the trace format
-//  // differs from the standard one, that is
-//  // - 10 seconds length trace
-//  // - 10,000 samples
-//  // - 0.5 seconds for window size
-//  // - 100 RB
-//  lteHelper->SetFadingModelAttribute ("TraceLength", TimeValue (Seconds (10.0)));
-//  lteHelper->SetFadingModelAttribute ("SamplesNum", UintegerValue (10000));
-//  lteHelper->SetFadingModelAttribute ("WindowSize", TimeValue (Seconds (0.5)));
-//  lteHelper->SetFadingModelAttribute ("RbNum", UintegerValue (100));
+  if (useFading == true)
+   {
+	  lteHelper->SetAttribute ("FadingModel", StringValue ("ns3::TraceFadingLossModel"));
 
-  // remove shadowing
+	  std::ifstream ifTraceFile;
+	  ifTraceFile.open ("../../src/lte/model/fading-traces/fading_trace_EPA_3kmph.fad", std::ifstream::in);
+	  if (ifTraceFile.good ())
+	    {
+	      // script launched by test.py
+	      lteHelper->SetFadingModelAttribute ("TraceFilename", StringValue ("../../src/lte/model/fading-traces/fading_trace_EPA_3kmph.fad"));
+	    }
+	  else
+	    {
+	      // script launched as an example
+	      lteHelper->SetFadingModelAttribute ("TraceFilename", StringValue ("src/lte/model/fading-traces/fading_trace_EPA_3kmph.fad"));
+	    }
+
+	  // these parameters have to be set only in case of the trace format
+	  // differs from the standard one, that is
+	  // - 10 seconds length trace
+	  // - 10,000 samples
+	  // - 0.5 seconds for window size
+	  // - 100 RB
+	  lteHelper->SetFadingModelAttribute ("TraceLength", TimeValue (Seconds (10.0)));
+	  lteHelper->SetFadingModelAttribute ("SamplesNum", UintegerValue (10000));
+	  lteHelper->SetFadingModelAttribute ("WindowSize", TimeValue (Seconds (0.5)));
+	  lteHelper->SetFadingModelAttribute ("RbNum", UintegerValue (100));
+   }
+
   lteHelper->SetAttribute ("PathlossModel", StringValue ("ns3::ThreeGppUmaPropagationLossModel"));
-  lteHelper->SetPathlossModelAttribute ("ShadowingEnabled", BooleanValue (false));
+  //remove shadowing
+  if (useShadowing == false){
+	  lteHelper->SetPathlossModelAttribute ("ShadowingEnabled", BooleanValue (false));
+  }
 
   Ptr<PointToPointEpcHelper> epcHelper = CreateObject<PointToPointEpcHelper> ();
   lteHelper->SetEpcHelper (epcHelper);
@@ -149,19 +150,22 @@ main (int argc, char *argv[])
     {
       positionAlloc->Add (Vector (distance * i, 0, 0));
     }
-  MobilityHelper mobility;
-  mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
-  mobility.SetPositionAllocator(positionAlloc);
-  mobility.Install(enbNodes);
+  MobilityHelper enbMobility;
+  enbMobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
+  enbMobility.SetPositionAllocator(positionAlloc);
+  enbMobility.Install(enbNodes);
 
-  Ptr<ListPositionAllocator> positionAlloc2 = CreateObject<ListPositionAllocator> ();
-   for (uint16_t i = 0; i < numNodePairs; i++)
-     {
-       positionAlloc2->Add (Vector ((distance/2) * i, 0, 0));
-     }
-  mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
-  mobility.SetPositionAllocator(positionAlloc2);
-  mobility.Install(ueNodes);
+  MobilityHelper ueMobility;
+  for (uint16_t i = 0; i < numNodePairs; i++)
+      {
+	  ueMobility.SetPositionAllocator ("ns3::UniformDiscPositionAllocator",
+                                       "X", DoubleValue (0.0),
+                                       "Y", DoubleValue (0.0),
+  									   "Z", DoubleValue (0.0),
+                                       "rho", DoubleValue (radius*(i+1)));
+      }
+  ueMobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+  ueMobility.Install (ueNodes);
 
   // Install LTE Devices to the nodes
   NetDeviceContainer enbLteDevs = lteHelper->InstallEnbDevice (enbNodes);
@@ -242,6 +246,8 @@ main (int argc, char *argv[])
 
   serverApps.Start (MilliSeconds (0.01));
   clientApps.Start (MilliSeconds (0.01));
+  serverApps.Stop (simTime);
+  clientApps.Stop (simTime);
   lteHelper->EnableTraces ();
   // Uncomment to enable PCAP tracing
   //p2ph.EnablePcapAll("lena-simple-epc");
