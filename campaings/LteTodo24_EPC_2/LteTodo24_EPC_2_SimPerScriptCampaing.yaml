@@ -1,0 +1,77 @@
+# ns-3 script configuration
+ns3Parameters:
+
+    ns3_path:                       # Complete path of ns-3 simulator
+    ns3_script: lena-simple-epc-v6   # Script with the main code (inside scratch folder without .cc)
+    cluster_path: /home/rqdfhsilva/ns-allinone-3.35/ns-3.35/
+    CampaignTag: CampaignLteEPC          # Output filename
+    simLocation: cluster            # Set location of simulation (local or cluster)
+
+# Shell Script Parameters configuration
+ShellScriptParameters: 
+    
+    nOfCurlines: 3     # number of Campaign Lines
+    SimTied: 0          # whether or not campaign lines are tied
+    nOfCurlinesTied: 0  # n.o Campaign Lines Tied
+    daytime: 0          # number of days to simulate (only for cluster simulation) 
+    htime: 12            # number of hours to simulate (only for cluster simulation) 
+    ntasks: 36           # number of simulation in one .sh (only for cluster simulation - default: 30) 
+    cpusPerTask: 2      # numer of CPUs per Task
+    numberOfJobsShellScript: 5
+
+#Lines/curves
+campaignLines:
+
+    campaignX:          # campaignX: parameter name to vary in the X-axis (ONLY 1)
+        - Lambda
+    campaignLines:      # campaignLines: parameter name to vary in different lines
+        - numUes
+        - useShadowing
+        - useFading
+    jobs: 10             # Number of jobs to run 
+
+# Simu parameters. It is also necessary to create an "outputDir" parameter in your ns-3 script.
+# outputDir will be constructed based on cluster_path, therefore it is not necessary declare it below.
+scenarioParameters: 
+    fadingEnd:
+        - /home/rqdfhsilva/ns-allinone-3.35/ns-3.35/src/lte/model/fading-traces/fading_trace_ETU_3kmph.fad
+    Lambda:
+        - 0.001
+        - 0.01
+        - 0.1
+    packetSize:
+        - 125
+    numEnbs:
+        - 1
+    numUes:
+        - 1
+        - 5
+        - 10
+    appStartTime: 
+        - 0.01
+    simTime:
+        - 60
+    interPacketInterval:
+        - 100
+    radius:
+        - 100
+    distance:
+        - 20
+    useUdp:
+        - 0
+    usePoisson:
+        - 1
+    useShadowing:
+        - 0
+        - 1
+    useFading:
+        - 0
+        - 1
+    useDl:
+        - 1
+    useUl:
+        - 0
+    usePl:
+        - 0
+    verbose:
+        - 0
