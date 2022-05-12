@@ -89,28 +89,44 @@ main (int argc, char *argv[])
   std::string simTag = "";
 
   std::string scenario = "UMa"; //scenario
-  std::string beamforming = "dir-dir"; //beamforming at gNB and UE, the first is gNB and the second is UE
+  std::string beamforming = "dir-omni"; //beamforming at gNB and UE, the first is gNB and the second is UE
   enum BandwidthPartInfo::Scenario scenarioEnum = BandwidthPartInfo::UMa;
 
   uint16_t gNbNum = 1;
   uint16_t ueNumPergNb = 1;
-  std::string deploymentScenario = "FourGnbs";
+  std::string deploymentScenario = "SquareInside_3s";
   std::string typeOfRem = "DlRem";
 
-  double gNB1x = 20.0;
-  double gNB1y = 16.66;
-  double gNB2x = 20.0;
-  double gNB2y = 33.333;
+  std::string lambda = "0.25";
+  uint32_t packetSize = 125;
+  double appStartTime = 0.01;
+  bool useDl = true;
+  bool useUl = false;
 
-  double ue1x = 35.0;
-  double ue1y = 25.0;
-  double ue2x = 40.0;
-  double ue2y = 40.0;
+  double gNB1x = 0.0;
+  double gNB1y = 0.0;
+  double gNB2x = -10.0;
+  double gNB2y = -15.0;
+  double gNB3x;
+  double gNB3y;
+
+  double ue1x = 35;
+  double ue1y = 25;
+  double ue2x = 34;
+  double ue2y = 24;
+  double ue3x = 37;
+  double ue3y = 27;
+
+  double offset = 1;
+  double offset2 = 1;
+  double offset3 = 1;
+  double offset4 = 1;
+
 
   double frequency = 24.3e9;//28e9
   double bandwidth = 200e6; //100e6
   uint16_t numerology = 2;
-  double txPower = 1; //4
+  double txPower = 23; //4
 
   //Antenna Parameters
   double hBS;   //Depend on the scenario (no input parameters)
@@ -125,6 +141,12 @@ main (int argc, char *argv[])
   double simTime = 1; // in seconds
   bool logging = false;
   bool enableTraces = false;
+
+  //building parameters in case of buildings addition
+  bool enableBuildings = false; //Depends on the scenario (no input parameter)
+  uint32_t numOfBuildings = 1;
+  uint32_t apartmentsX = 2;
+  uint32_t nFloors = 1;
 
   //Rem parameters
   double xMin = 0;
@@ -223,6 +245,15 @@ main (int argc, char *argv[])
   cmd.AddValue ("isoGnb",
                 "If true (set to 1), use an isotropic radiation pattern in the gNB ",
                 isoGnb);
+  cmd.AddValue ("numOfBuildings",
+                "The number of Buildings to deploy in the scenario",
+                numOfBuildings);
+  cmd.AddValue ("apartmentsX",
+                "The number of apartments inside a building",
+                apartmentsX);
+  cmd.AddValue ("nFloors",
+                "The number of floors of a building",
+                nFloors);
   cmd.AddValue ("beamforming",
                 "If dir-dir configure direct-path at both gNB and UE; "
                 "if dir-omni configure direct-path at gNB and quasi-omni at UE;"
@@ -285,16 +316,29 @@ main (int argc, char *argv[])
   else if (scenario.compare ("UMa") == 0)
     {
       //hBS = 25;
-      hBS = 3;
+      hBS = 1.5;
       hUT = 1.5;
       scenarioEnum = BandwidthPartInfo::UMa;
     }
-
+  else if (scenario.compare ("UMa-Buildings") == 0)
+    {
+      hBS = 1.5; // 25
+      hUT = 1.5;
+      scenarioEnum = BandwidthPartInfo::UMa_Buildings;
+      enableBuildings = true;
+    }
   else if (scenario.compare ("UMi-StreetCanyon") == 0)
     {
       hBS = 10;
       hUT = 1.5;
       scenarioEnum = BandwidthPartInfo::UMi_StreetCanyon;
+    }
+  else if (scenario.compare ("UMi-Buildings") == 0)
+    {
+      hBS = 10;
+      hUT = 1.5;
+      scenarioEnum = BandwidthPartInfo::UMi_Buildings;
+      enableBuildings = true;
     }
   else if (scenario.compare ("InH-OfficeMixed") == 0)
     {
@@ -315,10 +359,19 @@ main (int argc, char *argv[])
                     "'UMa-Buildings', and 'UMi-Buildings'.");
     }
 
-
-  if (deploymentScenario.compare ("FourGnbs") == 0)
+  if ((deploymentScenario.compare ("UpLeftDiagonalInside_Omni") == 0) or (deploymentScenario.compare ("UpLeftDiagonalInside_3s") == 0))
+    {
+      gNbNum = 2;
+      ueNumPergNb = 1;
+    }
+  else if ((deploymentScenario.compare ("SquareInside_Omni") == 0) or (deploymentScenario.compare ("AllCorners_Omni") == 0))
     {
       gNbNum = 4;
+      ueNumPergNb = 1;
+    }
+  else if ((deploymentScenario.compare ("SquareInside_3s") == 0) or (deploymentScenario.compare ("AllCorners_3s") == 0))
+    {
+      gNbNum = 12;
       ueNumPergNb = 1;
     }
   else
@@ -326,8 +379,6 @@ main (int argc, char *argv[])
       NS_ABORT_MSG ("Deployment scenario not supported. "
                     "Choose among 'SingleGnb', 'TwoGnbs'.");
     }
-
-  double offset = 30;
 
   // create base stations and mobile terminals
   NodeContainer gnbNodes;
@@ -337,12 +388,106 @@ main (int argc, char *argv[])
 
   // position the base stations
   Ptr<ListPositionAllocator> gnbPositionAlloc = CreateObject<ListPositionAllocator> ();
-  gnbPositionAlloc->Add (Vector (gNB1x, gNB1y, hBS));
-  if (deploymentScenario.compare ("FourGnbs") == 0)
-    {
-      gnbPositionAlloc->Add (Vector (gNB2x, gNB2y, hBS));
+  if (deploymentScenario.compare ("SquareInside_Omni") == 0){
+	  isoGnb = true;
+	  gNB1x = 20.0;
+	  gNB1y = 16.66;
+	  gNB2x = 20.0;
+	  gNB2y = 33.333;
+
+	  offset = 30;
+
+	  // position the base stations
+	  gnbPositionAlloc->Add (Vector (gNB1x, gNB1y, hBS));
+	  gnbPositionAlloc->Add (Vector (gNB2x, gNB2y, hBS));
+	  gnbPositionAlloc->Add (Vector (gNB1x + offset, gNB1y, hBS));
+	  gnbPositionAlloc->Add (Vector (gNB2x + offset, gNB2y, hBS));
+    }
+  else if (deploymentScenario.compare ("SquareInside_3s") == 0){
+  	  gNB1x = 20.0;
+  	  gNB1y = 16.66;
+  	  gNB2x = 20.0;
+  	  gNB2y = 16.66;
+  	  gNB3x = 20.0;
+  	  gNB3y = 16.66;
+
+
+  	  offset = 30;
+  	  offset2 = 16.66;
+  	  offset3 = 0.01;
+  	  offset4 = 0.02;
+
+  	  // position the base stations
+  	  gnbPositionAlloc->Add (Vector (gNB1x, gNB1y, hBS));
+  	  gnbPositionAlloc->Add (Vector (gNB2x+offset3, gNB2y, hBS));
+  	  gnbPositionAlloc->Add (Vector (gNB3x+offset4, gNB3y, hBS));
+
+  	  gnbPositionAlloc->Add (Vector (gNB1x+offset, gNB1y, hBS));
+  	  gnbPositionAlloc->Add (Vector (gNB2x+(offset+offset3), gNB2y, hBS));
+  	  gnbPositionAlloc->Add (Vector (gNB3x+(offset+offset4), gNB3y, hBS));
+
+  	  gnbPositionAlloc->Add (Vector (gNB1x+offset, gNB1y+offset2, hBS));
+  	  gnbPositionAlloc->Add (Vector (gNB2x+(offset+offset3), gNB2y+offset2, hBS));
+  	  gnbPositionAlloc->Add (Vector (gNB3x+(offset+offset4), gNB3y+offset2, hBS));
+
+  	  gnbPositionAlloc->Add (Vector (gNB1x, gNB1y+offset2, hBS));
+  	  gnbPositionAlloc->Add (Vector (gNB2x+offset3, gNB2y+offset2, hBS));
+  	  gnbPositionAlloc->Add (Vector (gNB3x+offset4, gNB3y+offset2, hBS));
+
+    }
+  else if (deploymentScenario.compare ("AllCorners_Omni") == 0){
+	  isoGnb = true;
+      gNB1x = 5.0;
+      gNB1y = 45.0;
+      gNB2x = 5.0;
+      gNB2y = 5.0;
+
+      offset = 60;
+
+   	  // position the base stations
+   	  gnbPositionAlloc->Add (Vector (gNB1x, gNB1y, hBS));
+   	  gnbPositionAlloc->Add (Vector (gNB2x, gNB2y, hBS));
+   	  gnbPositionAlloc->Add (Vector (gNB1x + offset, gNB1y, hBS));
+   	  gnbPositionAlloc->Add (Vector (gNB2x + offset, gNB2y, hBS));
+    }
+  else if (deploymentScenario.compare ("AllCorners_3s") == 0){
+      gNB1x = 5.0;
+      gNB1y = 45.0;
+      gNB2x = 5.0;
+      gNB2y = 5.0;
+
+      offset = 60;
+
+      // position the base stations
+   	  gnbPositionAlloc->Add (Vector (gNB1x, gNB1y, hBS));
+   	  gnbPositionAlloc->Add (Vector (gNB2x, gNB2y, hBS));
+   	  gnbPositionAlloc->Add (Vector (gNB1x + offset, gNB1y, hBS));
+   	  gnbPositionAlloc->Add (Vector (gNB2x + offset, gNB2y, hBS));
+    }
+  else if (deploymentScenario.compare ("UpLeftDiagonalInside_Omni") == 0){
+	  isoGnb = true;
+	  gNB1x = 20.0;
+	  gNB1y = 16.66;
+	  gNB2x = 20.0;
+	  gNB2y = 33.333;
+
+      offset = 30;
+
+   	  // position the base stations
+   	  gnbPositionAlloc->Add (Vector (gNB1x + offset, gNB1y, hBS));
+   	  gnbPositionAlloc->Add (Vector (gNB2x, gNB2y, hBS));
+    }
+  else if (deploymentScenario.compare ("UpLeftDiagonalInside_3s") == 0){
+  	  gNB1x = 20.0;
+  	  gNB1y = 16.66;
+  	  gNB2x = 20.0;
+  	  gNB2y = 33.333;
+
+      offset = 30;
+
+   	  // position the base stations
       gnbPositionAlloc->Add (Vector (gNB1x + offset, gNB1y, hBS));
-      gnbPositionAlloc->Add (Vector (gNB2x + offset, gNB2y, hBS));
+      gnbPositionAlloc->Add (Vector (gNB2x, gNB2y, hBS));
     }
 
   MobilityHelper gnbMobility;
@@ -356,11 +501,52 @@ main (int argc, char *argv[])
   ueMobility.Install (ueNodes);
 
   ueNodes.Get (0)->GetObject<MobilityModel> ()->SetPosition (Vector (ue1x, ue1y, hUT));
-  if (deploymentScenario.compare ("FourGnbs") == 0)
+  if ((deploymentScenario.compare ("UpLeftDiagonalInside_Omni") == 0) or (deploymentScenario.compare ("UpLeftDiagonalInside_3s") == 0))
+    {
+      ueNodes.Get (1)->GetObject<MobilityModel> ()->SetPosition (Vector (ue2x, ue2y, hUT));
+    }
+
+  if ((deploymentScenario.compare ("SquareInside_Omni") == 0) or (deploymentScenario.compare ("AllCorners_Omni") == 0))
     {
       ueNodes.Get (1)->GetObject<MobilityModel> ()->SetPosition (Vector (ue2x, ue2y, hUT));
       ueNodes.Get (2)->GetObject<MobilityModel> ()->SetPosition (Vector (ue1x + offset, ue1y, hUT));
       ueNodes.Get (3)->GetObject<MobilityModel> ()->SetPosition (Vector (ue2x + offset, ue2y, hUT));
+    }
+
+  if ((deploymentScenario.compare ("SquareInside_3s") == 0) or (deploymentScenario.compare ("AllCorners_3s") == 0))
+      {
+	  ueNodes.Get (1)->GetObject<MobilityModel> ()->SetPosition (Vector (ue2x, ue2y, hUT));
+	  ueNodes.Get (2)->GetObject<MobilityModel> ()->SetPosition (Vector (ue1x + offset, ue1y, hUT));
+	  ueNodes.Get (3)->GetObject<MobilityModel> ()->SetPosition (Vector (ue2x + offset, ue2y, hUT));
+	  ueNodes.Get (4)->GetObject<MobilityModel> ()->SetPosition (Vector (ue3x, ue3y, hUT));
+	  ueNodes.Get (5)->GetObject<MobilityModel> ()->SetPosition (Vector (ue3x + offset, ue3y, hUT));
+	  ueNodes.Get (6)->GetObject<MobilityModel> ()->SetPosition (Vector (ue2x + offset, ue3y, hUT));
+	  ueNodes.Get (7)->GetObject<MobilityModel> ()->SetPosition (Vector (ue3x + offset, ue2y, hUT));
+	  ueNodes.Get (8)->GetObject<MobilityModel> ()->SetPosition (Vector (ue3x, ue3y + offset, hUT));
+	  ueNodes.Get (9)->GetObject<MobilityModel> ()->SetPosition (Vector (ue3x + offset, ue3y + offset, hUT));
+	  ueNodes.Get (10)->GetObject<MobilityModel> ()->SetPosition (Vector (ue1x + offset, ue3y, hUT));
+	  ueNodes.Get (11)->GetObject<MobilityModel> ()->SetPosition (Vector (ue3x + offset, ue1y, hUT));
+      }
+
+  if (enableBuildings)
+    {
+      Ptr<GridBuildingAllocator> gridBuildingAllocator;
+      gridBuildingAllocator = CreateObject<GridBuildingAllocator> ();
+      gridBuildingAllocator->SetAttribute ("GridWidth", UintegerValue (numOfBuildings));
+      gridBuildingAllocator->SetAttribute ("LengthX", DoubleValue (2 * apartmentsX));
+      gridBuildingAllocator->SetAttribute ("LengthY", DoubleValue (10));
+      gridBuildingAllocator->SetAttribute ("DeltaX", DoubleValue (10));
+      gridBuildingAllocator->SetAttribute ("DeltaY", DoubleValue (10));
+      gridBuildingAllocator->SetAttribute ("Height", DoubleValue (3 * nFloors));
+      gridBuildingAllocator->SetBuildingAttribute ("NRoomsX", UintegerValue (apartmentsX));
+      gridBuildingAllocator->SetBuildingAttribute ("NRoomsY", UintegerValue (2));
+      gridBuildingAllocator->SetBuildingAttribute ("NFloors", UintegerValue (nFloors));
+      gridBuildingAllocator->SetAttribute ("MinX", DoubleValue (10));
+      gridBuildingAllocator->SetAttribute ("MinY", DoubleValue (10));
+      gridBuildingAllocator->Create (numOfBuildings);
+
+      BuildingsHelper::Install (gnbNodes);
+      BuildingsHelper::Install (ueNodes);
     }
 
   /*
@@ -425,13 +611,28 @@ main (int argc, char *argv[])
   nrHelper->SetUeAntennaAttribute ("NumRows", UintegerValue (numRowsUe));
   nrHelper->SetUeAntennaAttribute ("NumColumns", UintegerValue (numColumnsUe));
   //Antenna element type for UEs
-  nrHelper->SetUeAntennaAttribute ("AntennaElement", PointerValue (CreateObject<ThreeGppAntennaModel> ()));
+  if (isoUe)
+    {
+      nrHelper->SetUeAntennaAttribute ("AntennaElement", PointerValue (CreateObject<IsotropicAntennaModel> ()));
+    }
+  else
+    {
+      nrHelper->SetUeAntennaAttribute ("AntennaElement", PointerValue (CreateObject<ThreeGppAntennaModel> ()));
+    }
 
   // Antennas for the gNbs
   nrHelper->SetGnbAntennaAttribute ("NumRows", UintegerValue (numRowsGnb));
   nrHelper->SetGnbAntennaAttribute ("NumColumns", UintegerValue (numColumnsGnb));
   //Antenna element type for gNBs
-  nrHelper->SetGnbAntennaAttribute ("AntennaElement", PointerValue (CreateObject<ThreeGppAntennaModel> ()));
+  if (isoGnb)
+    {
+      nrHelper->SetGnbAntennaAttribute ("AntennaElement", PointerValue (CreateObject<IsotropicAntennaModel> ()));
+    }
+  else
+    {
+      nrHelper->SetGnbAntennaAttribute ("AntennaElement", PointerValue (CreateObject<ThreeGppAntennaModel> ()));
+    }
+
 
   // install nr net devices
   NetDeviceContainer gnbNetDev = nrHelper->InstallGnbDevice (gnbNodes, allBwps);
@@ -443,6 +644,31 @@ main (int argc, char *argv[])
 
   for (uint32_t i = 0; i < gNbNum; ++i)
     {
+	  if ((deploymentScenario.compare ("SquareInside_3s") == 0) or (deploymentScenario.compare ("AllCorners_3s") == 0))
+	  {
+		  if (i%3==0)
+		  {
+			  Ptr<NrGnbPhy> phy0 = nrHelper->GetGnbPhy (gnbNetDev.Get(i),0);
+			  Ptr<UniformPlanarArray> antenna0 =
+					  DynamicCast<UniformPlanarArray> (phy0->GetSpectrumPhy()->GetAntenna());
+			  antenna0->SetAttribute ("BearingAngle", DoubleValue (DegreesToRadians(0)));
+		  }
+		  else if (i%3==1)
+		  {
+			  Ptr<NrGnbPhy> phy0 = nrHelper->GetGnbPhy (gnbNetDev.Get(i),0);
+			  Ptr<UniformPlanarArray> antenna0 =
+			  DynamicCast<UniformPlanarArray> (phy0->GetSpectrumPhy()->GetAntenna());
+			  antenna0->SetAttribute ("BearingAngle", DoubleValue (DegreesToRadians(120)));
+		  }
+		  else
+		  {
+			  Ptr<NrGnbPhy> phy0 = nrHelper->GetGnbPhy (gnbNetDev.Get(i),0);
+			  Ptr<UniformPlanarArray> antenna0 =
+			  DynamicCast<UniformPlanarArray> (phy0->GetSpectrumPhy()->GetAntenna());
+			  antenna0->SetAttribute ("BearingAngle", DoubleValue (DegreesToRadians(-120)));
+		  }
+	  }
+
       nrHelper->GetGnbPhy (gnbNetDev.Get (i), 0)->SetTxPower (txPower);
       nrHelper->GetGnbPhy (gnbNetDev.Get (i), 0)->SetAttribute ("Numerology", UintegerValue (numerology));
     }
@@ -457,7 +683,6 @@ main (int argc, char *argv[])
     {
       DynamicCast<NrUeNetDevice> (*it)->UpdateConfig ();
     }
-
 
   // create the internet and install the IP stack on the UEs
   // get SGW/PGW and create a single RemoteHost
@@ -479,6 +704,8 @@ main (int argc, char *argv[])
   ipv4h.SetBase ("1.0.0.0", "255.0.0.0");
   Ipv4InterfaceContainer internetIpIfaces = ipv4h.Assign (internetDevices);
   Ipv4StaticRoutingHelper ipv4RoutingHelper;
+  // interface 0 is localhost, 1 is the p2p device
+  Ipv4Address remoteHostAddr = internetIpIfaces.GetAddress(1);
 
   Ptr<Ipv4StaticRouting> remoteHostStaticRouting = ipv4RoutingHelper.GetStaticRouting (remoteHost->GetObject<Ipv4> ());
   remoteHostStaticRouting->AddNetworkRouteTo (Ipv4Address ("7.0.0.0"), Ipv4Mask ("255.0.0.0"), 1);
@@ -488,42 +715,74 @@ main (int argc, char *argv[])
   ueIpIface = epcHelper->AssignUeIpv4Address (NetDeviceContainer (ueNetDev));
 
   // assign IP address to UEs, and install UDP downlink applications
-  uint16_t dlPort = 1234;
+  uint16_t dlPort = 1100;
+  uint16_t ulPort = 2000;
   ApplicationContainer clientApps;
   ApplicationContainer serverApps;
-  for (uint32_t u = 0; u < ueNodes.GetN (); ++u)
-    {
-      Ptr<Node> ueNode = ueNodes.Get (u);
-      // Set the default gateway for the UE
-      Ptr<Ipv4StaticRouting> ueStaticRouting = ipv4RoutingHelper.GetStaticRouting (ueNode->GetObject<Ipv4> ());
-      ueStaticRouting->SetDefaultRoute (epcHelper->GetUeDefaultGatewayAddress (), 1);
+  for (uint32_t u = 0; u < ueNodes.GetN(); ++u) {
+	  if (useDl) {
+		  PacketSinkHelper dlPacketSinkHelper("ns3::UdpSocketFactory", InetSocketAddress(ueIpIface.GetAddress(u), dlPort));
+		  serverApps.Add(dlPacketSinkHelper.Install(ueNodes.Get(u)));
 
-      UdpServerHelper dlPacketSinkHelper (dlPort);
-      serverApps.Add (dlPacketSinkHelper.Install (ueNodes.Get (u)));
+		  OnOffHelper dlClient("ns3::UdpSocketFactory", InetSocketAddress(ueIpIface.GetAddress(u), dlPort));
+		  dlClient.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=0.001]"));
+		  dlClient.SetAttribute("OffTime", StringValue("ns3::ExponentialRandomVariable[Mean=" + lambda + "]"));
+		  dlClient.SetAttribute("PacketSize", UintegerValue(packetSize));
+		  dlClient.SetAttribute("StartTime", TimeValue(MilliSeconds(100)));
+		  dlClient.SetAttribute("StopTime", TimeValue(Seconds(simTime)));
+		  clientApps.Add(dlClient.Install(remoteHost));
+	  }
+	  if (useUl) {
+		  ++ulPort;
+		  PacketSinkHelper ulPacketSinkHelper("ns3::UdpSocketFactory", InetSocketAddress(remoteHostAddr, ulPort));
+		  serverApps.Add(ulPacketSinkHelper.Install(remoteHost));
 
-      UdpClientHelper dlClient (ueIpIface.GetAddress (u), dlPort);
-      dlClient.SetAttribute ("Interval", TimeValue (MicroSeconds (1)));
-      //dlClient.SetAttribute ("MaxPackets", UintegerValue(0xFFFFFFFF));
-      dlClient.SetAttribute ("MaxPackets", UintegerValue (10));
-      dlClient.SetAttribute ("PacketSize", UintegerValue (1500));
-      clientApps.Add (dlClient.Install (remoteHost));
-    }
-
+		  OnOffHelper ulClient("ns3::UdpSocketFactory", InetSocketAddress(remoteHostAddr, ulPort));
+		  ulClient.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=0.001]"));
+		  ulClient.SetAttribute("OffTime", StringValue("ns3::ExponentialRandomVariable[Mean=" + lambda + "]"));
+		  ulClient.SetAttribute("PacketSize", UintegerValue(packetSize));
+		  ulClient.SetAttribute("StartTime", TimeValue(MilliSeconds(100)));
+		  ulClient.SetAttribute("StopTime", TimeValue(Seconds(simTime)));
+		  clientApps.Add(ulClient.Install(ueNodes.Get(u)));
+	  }
+  }
   // attach UEs to the closest gNB
   nrHelper->AttachToEnb (ueNetDev.Get (0), gnbNetDev.Get (0));
-  if (deploymentScenario.compare ("FourGnbs") == 0)
+
+  if ((deploymentScenario.compare ("UpLeftDiagonalInside_Omni") == 0) or (deploymentScenario.compare ("UpLeftDiagonalInside_3s") == 0))
+    {
+      nrHelper->AttachToEnb (ueNetDev.Get (1), gnbNetDev.Get (1));
+    }
+
+  if ((deploymentScenario.compare ("SquareInside_Omni") == 0) or (deploymentScenario.compare ("AllCorners_Omni") == 0))
     {
       nrHelper->AttachToEnb (ueNetDev.Get (1), gnbNetDev.Get (1));
       nrHelper->AttachToEnb (ueNetDev.Get (2), gnbNetDev.Get (2));
       nrHelper->AttachToEnb (ueNetDev.Get (3), gnbNetDev.Get (3));
     }
+  if ((deploymentScenario.compare ("SquareInside_3s") == 0) or (deploymentScenario.compare ("AllCorners_3s") == 0))
+    {
+      nrHelper->AttachToEnb (ueNetDev.Get (1), gnbNetDev.Get (1));
+      nrHelper->AttachToEnb (ueNetDev.Get (2), gnbNetDev.Get (2));
+      nrHelper->AttachToEnb (ueNetDev.Get (3), gnbNetDev.Get (3));
+      nrHelper->AttachToEnb (ueNetDev.Get (4), gnbNetDev.Get (4));
+      nrHelper->AttachToEnb (ueNetDev.Get (5), gnbNetDev.Get (5));
+      nrHelper->AttachToEnb (ueNetDev.Get (6), gnbNetDev.Get (6));
+      nrHelper->AttachToEnb (ueNetDev.Get (7), gnbNetDev.Get (7));
+      nrHelper->AttachToEnb (ueNetDev.Get (8), gnbNetDev.Get (8));
+      nrHelper->AttachToEnb (ueNetDev.Get (9), gnbNetDev.Get (9));
+      nrHelper->AttachToEnb (ueNetDev.Get (10), gnbNetDev.Get (10));
+      nrHelper->AttachToEnb (ueNetDev.Get (11), gnbNetDev.Get (11));
+
+    }
 
 
-//  // start server and client apps
-//  serverApps.Start (Seconds (0.4));
-//  clientApps.Start (Seconds (0.4));
-//  serverApps.Stop (Seconds (simTime));
-//  clientApps.Stop (Seconds (simTime - 0.2));
+
+  // start server and client apps
+  serverApps.Start(MilliSeconds(appStartTime));
+  clientApps.Start(MilliSeconds(appStartTime));
+  serverApps.Stop (Seconds (simTime));
+  clientApps.Stop (Seconds (simTime - 0.2));
 
   // enable the traces provided by the nr module
   if (enableTraces)
@@ -543,18 +802,32 @@ main (int argc, char *argv[])
   remHelper->SetZ (z);
   remHelper->SetSimTag (simTag);
 
-  gnbNetDev.Get (0)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (0));
+  gnbNetDev.Get (0)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetSpectrumPhy(0)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (0));
 
-  if (deploymentScenario.compare ("TwoGnbs") == 0)
+  if ((deploymentScenario.compare ("UpLeftDiagonalInside_Omni") == 0) or (deploymentScenario.compare ("UpLeftDiagonalInside_3s") == 0))
     {
-      gnbNetDev.Get (1)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (1));
+      gnbNetDev.Get (1)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetSpectrumPhy(0)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (1));
     }
 
-  if (deploymentScenario.compare ("FourGnbs") == 0)
+  if ((deploymentScenario.compare ("SquareInside_Omni") == 0) or (deploymentScenario.compare ("AllCorners_Omni") == 0))
     {
-      gnbNetDev.Get (1)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (1));
-      gnbNetDev.Get (2)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (2));
-      gnbNetDev.Get (3)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (3));
+      gnbNetDev.Get (1)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetSpectrumPhy(0)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (1));
+      gnbNetDev.Get (2)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetSpectrumPhy(0)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (2));
+      gnbNetDev.Get (3)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetSpectrumPhy(0)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (3));
+    }
+  if ((deploymentScenario.compare ("SquareInside_3s") == 0) or (deploymentScenario.compare ("AllCorners_3s") == 0))
+    {
+      gnbNetDev.Get (1)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetSpectrumPhy(0)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (1));
+      gnbNetDev.Get (2)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetSpectrumPhy(0)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (2));
+      gnbNetDev.Get (3)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetSpectrumPhy(0)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (3));
+      gnbNetDev.Get (4)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetSpectrumPhy(0)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (4));
+      gnbNetDev.Get (5)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetSpectrumPhy(0)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (5));
+      gnbNetDev.Get (6)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetSpectrumPhy(0)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (6));
+      gnbNetDev.Get (7)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetSpectrumPhy(0)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (7));
+      gnbNetDev.Get (8)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetSpectrumPhy(0)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (8));
+      gnbNetDev.Get (9)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetSpectrumPhy(0)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (9));
+      gnbNetDev.Get (10)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetSpectrumPhy(0)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (10));
+      gnbNetDev.Get (11)->GetObject<NrGnbNetDevice> ()->GetPhy (remBwpId)->GetSpectrumPhy(0)->GetBeamManager ()->ChangeBeamformingVector (ueNetDev.Get (11));
     }
 
   if (remMode == "BeamShape")
