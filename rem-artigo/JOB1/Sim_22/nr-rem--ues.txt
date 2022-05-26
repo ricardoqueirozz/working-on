@@ -1,0 +1,1 @@
+set label "22" at 35,25 left font "Helvetica,4" textcolor rgb "grey" front point pt 1 ps 1 lc rgb "grey" offset 0,0

@@ -1,0 +1,8 @@
+Waf: Entering directory `/home/rqdfhsilva/ns-3-dev-master/build'
+Waf: Leaving directory `/home/rqdfhsilva/ns-3-dev-master/build'
+Build commands will be stored in build/compile_commands.json
+'build' finished successfully (1.637s)
+gnb is RTD (transmitter)
+gnb is RTD (transmitter)
+gnb is RTD (transmitter)
+ue is RRD (receiver)

@@ -1,0 +1,6 @@
+set label "17" at 23.33,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "18" at 23.34,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "19" at 23.35,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "20" at 46.66,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "21" at 46.67,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "22" at 46.68,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0

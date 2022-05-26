@@ -1,0 +1,4 @@
+set label "13" at 14,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "14" at 28,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "15" at 42,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "16" at 56,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0

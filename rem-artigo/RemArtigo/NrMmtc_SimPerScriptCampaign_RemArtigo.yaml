@@ -1,0 +1,53 @@
+# ns-3 script configuration
+ns3Parameters:
+
+    ns3_path:                       # Complete path of ns-3 simulator
+    ns3_script: rem-artigo   # Script with the main code (inside scratch folder without .cc)
+    cluster_path: /home/rqdfhsilva/ns-3-dev-master/
+    CampaignTag: CampaignNrRem          # Output filename
+    simLocation: cluster            # Set location of simulation (local or cluster)
+
+# Shell Script Parameters configuration
+ShellScriptParameters: 
+    
+    nOfCurlines: 3      # number of Campaign Lines
+    SimTied: 0
+    nOfCurlinesTied: 0  # if greater than nOfCurlines, means that campaignX is included
+    daytime: 1          # number of days to simulate (only for cluster simulation) 
+    htime: 24            # number of hours to simulate (only for cluster simulation) 
+    ntasks: 48           # number of simulation in one .sh (only for cluster simulation - default: 30) 
+    cpusPerTask: 16      # numer of CPUs per Task
+    numberOfJobsShellScript: 1
+
+#Lines/curves
+campaignLines:
+
+    campaignX:          # campaignX: parameter name to vary in the X-axis (ONLY 1)
+        - deploymentScenario
+    campaignLines:      # campaignLines: parameter name to vary in different lines
+        - scenario
+        - frequency
+        - txPower
+    jobs: 1             # Number of jobs to run 
+
+# Simu parameters
+scenarioParameters: 
+
+    scenario:
+        - InH-OfficeOpen_LoS
+    deploymentScenario:
+        - Case1_Omni
+        - Case2_Omni
+        - Case3_Omni
+        - Case4_Omni
+        - Case1_3s
+        - Case2_3s
+        - Case3_3s
+        - Case4_3s
+    frequency:
+        - 24.3e9
+        - 3.5e9
+    txPower:
+        - 23
+        - 17
+        - 11

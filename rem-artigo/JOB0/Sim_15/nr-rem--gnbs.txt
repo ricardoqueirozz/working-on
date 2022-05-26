@@ -1,0 +1,12 @@
+set label "29" at 14,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "30" at 14.01,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "31" at 14.02,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "32" at 28,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "33" at 28.01,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "34" at 28.02,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "35" at 42,25.01 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "36" at 42.01,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "37" at 42.02,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "38" at 56,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "39" at 56.01,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "40" at 56.02,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0

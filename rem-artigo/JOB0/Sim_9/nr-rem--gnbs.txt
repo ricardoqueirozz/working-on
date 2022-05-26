@@ -1,0 +1,2 @@
+set label "9" at 23.33,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0
+set label "10" at 46.66,25 left font "Helvetica,4" textcolor rgb "white" front  point pt 2 ps 1 lc rgb "white" offset 0,0

@@ -1,0 +1,30 @@
+Waf: Entering directory `/home/rqdfhsilva/ns-3-dev-master/build'
+Waf: Leaving directory `/home/rqdfhsilva/ns-3-dev-master/build'
+Build commands will be stored in build/compile_commands.json
+Traceback (most recent call last):
+  File "/home/rqdfhsilva/ns-3-dev-master/.waf3-2.0.21-c6c9a875365426e5928462b9b74d40b5/waflib/Scripting.py", line 119, in waf_entry_point
+    run_commands()
+  File "/home/rqdfhsilva/ns-3-dev-master/.waf3-2.0.21-c6c9a875365426e5928462b9b74d40b5/waflib/Scripting.py", line 182, in run_commands
+    ctx=run_command(cmd_name)
+  File "/home/rqdfhsilva/ns-3-dev-master/.waf3-2.0.21-c6c9a875365426e5928462b9b74d40b5/waflib/Scripting.py", line 173, in run_command
+    ctx.execute()
+  File "/home/rqdfhsilva/ns-3-dev-master/.waf3-2.0.21-c6c9a875365426e5928462b9b74d40b5/waflib/Scripting.py", line 375, in execute
+    return execute_method(self)
+  File "/home/rqdfhsilva/ns-3-dev-master/.waf3-2.0.21-c6c9a875365426e5928462b9b74d40b5/waflib/Build.py", line 93, in execute
+    self.execute_build()
+  File "/home/rqdfhsilva/ns-3-dev-master/.waf3-2.0.21-c6c9a875365426e5928462b9b74d40b5/waflib/Build.py", line 112, in execute_build
+    self.post_build()
+  File "/home/rqdfhsilva/ns-3-dev-master/.waf3-2.0.21-c6c9a875365426e5928462b9b74d40b5/waflib/Build.py", line 272, in post_build
+    m(self)
+  File "waf-tools/clang_compilation_database.py", line 47, in write_compilation_database
+    root = json.load(database_file)
+  File "/usr/lib64/python3.6/json/__init__.py", line 299, in load
+    parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib64/python3.6/json/__init__.py", line 354, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.6/json/decoder.py", line 339, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.6/json/decoder.py", line 357, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+srun: error: r1i1n10: task 0: Exited with exit code 2
